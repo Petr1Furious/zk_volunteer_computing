@@ -5,7 +5,7 @@ use ark_serialize::CanonicalDeserialize;
 use ark_snark::SNARK;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use std::str::FromStr;
-use zk_volunteer_computing::circuit;
+use zkvc::circuit;
 
 async fn verify(request: web::Json<circuit::ProofRequest>) -> impl Responder {
     let vk_bytes = std::fs::read("vk.bin").expect("vk.bin must exist");

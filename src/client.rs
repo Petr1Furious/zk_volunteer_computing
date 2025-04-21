@@ -1,19 +1,20 @@
 use ark_bls12_381::{Bls12_381, Fr};
-use ark_ff::PrimeField as _;
+use ark_ff::PrimeField;
 use ark_groth16::{ProvingKey, create_random_proof};
 use ark_serialize::CanonicalDeserialize;
 use ark_serialize::CanonicalSerialize;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use rand::thread_rng;
 use reqwest::Client;
-use zk_volunteer_computing::circuit;
+use zkvc::circuit;
 
-fn strip_leading_zeros(s: &str) -> String {
+fn fr_to_string<F: PrimeField>(f: F) -> String {
+    let s = f.into_repr().to_string();
     let trimmed = s.trim_start_matches('0');
     if trimmed.is_empty() {
-        "0".to_owned()
+        "0".into()
     } else {
-        trimmed.to_owned()
+        trimmed.into()
     }
 }
 
@@ -31,11 +32,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mut proof_bytes = vec![];
     proof.serialize_uncompressed(&mut proof_bytes)?;
-    let public_inputs = vec![
-        strip_leading_zeros(&x.into_repr().to_string()),
-        strip_leading_zeros(&y.into_repr().to_string()),
-        strip_leading_zeros(&(x + y).into_repr().to_string()),
-    ];
+    let public_inputs = vec![fr_to_string(x), fr_to_string(y), fr_to_string(x + y)];
 
     let request = circuit::ProofRequest {
         proof: STANDARD.encode(&proof_bytes),

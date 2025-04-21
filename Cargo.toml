@@ -1,5 +1,5 @@
 [package]
-name = "zk_volunteer_computing"
+name = "zkvc"
 version = "0.1.0"
 edition = "2024"
 

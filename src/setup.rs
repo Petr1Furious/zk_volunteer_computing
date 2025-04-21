@@ -5,7 +5,7 @@ use ark_serialize::CanonicalSerialize;
 use rand::thread_rng;
 use std::fs::File;
 use ark_snark::CircuitSpecificSetupSNARK;
-use zk_volunteer_computing::circuit;
+use zkvc::circuit;
 
 fn main() -> anyhow::Result<()> {
     let rng = &mut thread_rng();
