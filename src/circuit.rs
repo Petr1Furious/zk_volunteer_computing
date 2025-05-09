@@ -3,7 +3,7 @@ use ark_r1cs_std::alloc::AllocVar;
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Serialize, Deserialize)]
 pub struct ProofRequest {
@@ -53,15 +53,15 @@ pub trait ConstraintGenerator<F: PrimeField> {
 
 pub struct ZkCircuit<F: PrimeField> {
     pub generator: Box<dyn ConstraintGenerator<F>>,
-    pub public_inputs: Arc<[F]>,
+    pub public_inputs: Arc<Mutex<Vec<F>>>,
 }
 
 impl<F: PrimeField> ConstraintSynthesizer<F> for ZkCircuit<F> {
-    fn generate_constraints(mut self, cs: ConstraintSystemRef<F>) -> Result<(), SynthesisError> {
+    fn generate_constraints(self, cs: ConstraintSystemRef<F>) -> Result<(), SynthesisError> {
         let mut ctx = ZkCircuitContext::new(cs);
         self.generator.generate_constraints(&mut ctx)?;
 
-        self.public_inputs = ctx.get_public_inputs().into();
+        *self.public_inputs.lock().unwrap() = ctx.get_public_inputs();
         Ok(())
     }
 }

@@ -17,39 +17,24 @@ pub fn verify(request: &ProofRequest, vk: &VerifyingKey<Bls12_381>) -> Result<bo
         .iter()
         .map(|s| field_from_string(s))
         .collect::<Result<Vec<_>, _>>()?;
+    println!("Inputs: {:?}", inputs);
 
     Ok(Groth16::<Bls12_381>::verify(vk, &inputs, &proof)?)
 }
 
 pub fn load_verification_key(vk_path: &str) -> Result<VerifyingKey<Bls12_381>, anyhow::Error> {
     let vk_bytes = std::fs::read(vk_path)?;
-    println!("bytes: {:?}", vk_bytes);
     let vk = VerifyingKey::deserialize_uncompressed(&*vk_bytes)?;
     Ok(vk)
 }
 
-pub fn verify_proof_from_file(file_path: &str, vk_path: &str) -> Result<bool, anyhow::Error> {
-    let vk = load_verification_key(vk_path)?;
-    let json = std::fs::read_to_string(file_path)?;
-    let request: ProofRequest = serde_json::from_str(&json)?;
-    verify(&request, &vk)
-}
-
-pub fn verify_proof_from_files(
-    proof_path: &str,
-    inputs_path: &str,
+pub fn verify_proof_from_file(
+    proof_request_path: &str,
     vk_path: &str,
 ) -> Result<bool, anyhow::Error> {
     let vk = load_verification_key(vk_path)?;
-    let proof = std::fs::read_to_string(proof_path)?;
-    let inputs_json = std::fs::read_to_string(inputs_path)?;
-    let public_inputs: Vec<String> = serde_json::from_str(&inputs_json)?;
-
-    let request = ProofRequest {
-        proof,
-        public_inputs,
-    };
-
+    let json = std::fs::read_to_string(proof_request_path)?;
+    let request: ProofRequest = serde_json::from_str(&json)?;
     verify(&request, &vk)
 }
 

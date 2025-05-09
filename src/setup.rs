@@ -1,15 +1,15 @@
 use crate::circuit::{ConstraintGenerator, ZkCircuit};
 use ark_bls12_381::{Bls12_381, Fr};
 use ark_groth16::{Groth16, ProvingKey, VerifyingKey};
-use ark_serialize::{CanonicalDeserialize as _, CanonicalSerialize as _};
+use ark_serialize::CanonicalSerialize as _;
 use ark_snark::CircuitSpecificSetupSNARK as _;
 use rand::thread_rng;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub fn generate_keys(
     generator: Box<dyn ConstraintGenerator<Fr>>,
 ) -> Result<(ProvingKey<Bls12_381>, VerifyingKey<Bls12_381>), anyhow::Error> {
-    let public_inputs: Arc<[Fr]> = Arc::new([]);
+    let public_inputs: Arc<Mutex<Vec<Fr>>> = Arc::new(Mutex::new(Vec::new()));
     let circuit = ZkCircuit {
         generator,
         public_inputs: Arc::clone(&public_inputs),
@@ -32,11 +32,6 @@ pub fn generate_keys_to_files(
 
     let mut vk_file = std::fs::File::create(vk_path)?;
     vk.serialize_uncompressed(&mut vk_file)?;
-    drop(vk_file);
-
-    let vk_bytes = std::fs::read(vk_path)?;
-    println!("bytes: {:?}", vk_bytes);
-    let _ = VerifyingKey::<Bls12_381>::deserialize_uncompressed(&*vk_bytes).unwrap();
 
     Ok(())
 }

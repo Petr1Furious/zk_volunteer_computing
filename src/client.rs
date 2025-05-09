@@ -9,13 +9,13 @@ use base64::{Engine as _, engine::general_purpose::STANDARD};
 use rand::thread_rng;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub fn generate_proof_request(
     generator: Box<dyn ConstraintGenerator<Fr>>,
     pk: &ProvingKey<Bls12_381>,
 ) -> Result<ProofRequest, anyhow::Error> {
-    let public_inputs: Arc<[Fr]> = Arc::new([]);
+    let public_inputs: Arc<Mutex<Vec<Fr>>> = Arc::new(Mutex::new(vec![]));
     let circuit = ZkCircuit {
         generator,
         public_inputs: Arc::clone(&public_inputs),
@@ -28,7 +28,9 @@ pub fn generate_proof_request(
     proof.serialize_uncompressed(&mut proof_bytes)?;
     let proof = STANDARD.encode(&proof_bytes);
 
-    let public_inputs = public_inputs
+    let public_inputs = public_inputs.lock().unwrap();
+
+    let public_inputs: Vec<String> = public_inputs
         .iter()
         .map(|&input| field_to_string(input))
         .collect();
