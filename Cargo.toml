@@ -20,15 +20,8 @@ actix-web = "4.10.2"
 ark-snark = "0.3"
 anyhow = "1.0.98"
 rand = "0.8.5"
+ark-ec = "0.3.0"
+log = "0.4.27"
 
-[[bin]]
-name = "setup"
-path = "src/setup.rs"
-
-[[bin]]
-name = "server"
-path = "src/server.rs"
-
-[[bin]]
-name = "client"
-path = "src/client.rs"
+[[example]]
+name = "simple_adder"
