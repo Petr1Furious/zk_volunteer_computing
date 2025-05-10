@@ -1,34 +1,12 @@
 use ark_bls12_381::Fr;
-use ark_r1cs_std::eq::EqGadget;
-use ark_relations::r1cs::SynthesisError;
 use clap::{Parser, Subcommand};
 use log::{info, LevelFilter};
-use zkvc::circuit::{ConstraintGenerator, ZkCircuitContext};
 use zkvc::client::{ClientApp, ClientConfig};
 use zkvc::response::VerificationResponse;
 use zkvc::server::{ServerApp, ServerConfig};
 use zkvc::{setup, utils};
 
-#[derive(Clone)]
-struct AdderCircuit {
-    x: Fr,
-    y: Fr,
-}
-
-impl ConstraintGenerator<Fr> for AdderCircuit {
-    fn generate_constraints(
-        &self,
-        context: &mut ZkCircuitContext<Fr>,
-    ) -> Result<(), SynthesisError> {
-        let x_var = context.new_public_input(|| Ok(self.x))?;
-        let y_var = context.new_witness(|| Ok(self.y))?;
-        let sum_var = &x_var + &y_var;
-
-        let expected_sum = context.new_public_input(|| Ok(self.x + self.y))?;
-        sum_var.enforce_equal(&expected_sum)?;
-        Ok(())
-    }
-}
+mod circuit;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -58,7 +36,7 @@ enum Commands {
 
 fn setup() -> Result<(), anyhow::Error> {
     info!("Starting setup phase");
-    let circuit = AdderCircuit {
+    let circuit = circuit::AdderCircuit {
         x: Fr::from(0u32),
         y: Fr::from(0u32),
     };
@@ -85,7 +63,7 @@ async fn run_client(
 
     let client = ClientApp::new(config)?;
 
-    let circuit = AdderCircuit {
+    let circuit = circuit::AdderCircuit {
         x: Fr::from(x),
         y: Fr::from(y),
     };
