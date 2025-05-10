@@ -58,8 +58,6 @@ enum Commands {
         #[arg(short, long, default_value = "5")]
         y: u32,
     },
-    /// Verify proof locally from file
-    Verify,
 }
 
 fn setup() -> Result<(), anyhow::Error> {
@@ -80,23 +78,17 @@ async fn run_client(server_url: String, x: u32, y: u32) -> Result<(), anyhow::Er
     let config = ClientConfig {
         server_url,
         proving_key_path: "pk.bin".to_string(),
-        proof_path: "proof.json".to_string(),
+        proof_path: Some("proof.json".to_string()),
     };
 
-    let mut client = ClientApp::new(config);
-    client.load_proving_key()?;
+    let client = ClientApp::new(config)?;
 
     let circuit = AdderCircuit {
         x: Fr::from(x),
         y: Fr::from(y),
     };
 
-    let proof_request = client.generate_proof(Box::new(circuit))?;
-
-    client.save_proof(&proof_request)?;
-    info!("Proof saved to file");
-
-    let response = client.send_proof(proof_request).await?;
+    let response = client.generate_and_send_proof(Box::new(circuit)).await?;
     info!("Server response: {}", response);
 
     Ok(())
@@ -109,22 +101,8 @@ async fn run_server(address: String) -> Result<(), anyhow::Error> {
         verification_key_path: "vk.bin".to_string(),
     };
 
-    let mut server = ServerApp::new(config);
-    server.load_verification_key()?;
-
+    let server = ServerApp::new(config)?;
     server.run_server().await?;
-
-    Ok(())
-}
-
-fn local_verify() -> Result<(), anyhow::Error> {
-    info!("Performing local verification");
-    let result = zkvc::server::verify_proof_from_file("proof.json", "vk.bin")?;
-
-    info!(
-        "Verification result: {}",
-        if result { "Valid" } else { "Invalid" }
-    );
 
     Ok(())
 }
@@ -154,8 +132,7 @@ async fn main() -> Result<(), anyhow::Error> {
         Commands::Setup => setup()?,
         Commands::Server { address } => run_server(address).await?,
         Commands::Client { server_url, x, y } => run_client(server_url, x, y).await?,
-        Commands::Verify => local_verify()?,
     }
 
     Ok(())
-} 
+}
