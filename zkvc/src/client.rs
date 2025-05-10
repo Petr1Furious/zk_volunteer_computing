@@ -1,5 +1,6 @@
 use crate::{
     circuit::{ConstraintGenerator, ProofRequest, ZkCircuit},
+    response::VerificationResponse,
     utils::field_to_string,
 };
 use ark_bls12_381::{Bls12_381, Fr};
@@ -79,7 +80,10 @@ impl ClientApp {
         Ok(())
     }
 
-    async fn send_proof(&self, request: ProofRequest) -> Result<String, anyhow::Error> {
+    async fn send_proof(
+        &self,
+        request: ProofRequest,
+    ) -> Result<VerificationResponse, anyhow::Error> {
         debug!("Sending proof to server at {}", self.config.server_url);
         let client = Client::new();
         let resp = client
@@ -88,7 +92,7 @@ impl ClientApp {
             .send()
             .await?;
 
-        let response = resp.text().await?;
+        let response = resp.json::<VerificationResponse>().await?;
         info!("Received response from server");
         Ok(response)
     }
@@ -96,7 +100,7 @@ impl ClientApp {
     pub async fn generate_and_send_proof(
         &self,
         generator: Box<dyn ConstraintGenerator<Fr>>,
-    ) -> Result<String, anyhow::Error> {
+    ) -> Result<VerificationResponse, anyhow::Error> {
         debug!("Generating and sending proof");
         let proof_request = self.generate_proof_request(generator)?;
         self.save_proof(&proof_request)?;

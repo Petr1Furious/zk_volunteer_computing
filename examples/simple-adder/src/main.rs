@@ -5,8 +5,9 @@ use clap::{Parser, Subcommand};
 use log::{info, LevelFilter};
 use zkvc::circuit::{ConstraintGenerator, ZkCircuitContext};
 use zkvc::client::{ClientApp, ClientConfig};
+use zkvc::response::VerificationResponse;
 use zkvc::server::{ServerApp, ServerConfig};
-use zkvc::setup;
+use zkvc::{setup, utils};
 
 #[derive(Clone)]
 struct AdderCircuit {
@@ -89,7 +90,20 @@ async fn run_client(server_url: String, x: u32, y: u32) -> Result<(), anyhow::Er
     };
 
     let response = client.generate_and_send_proof(Box::new(circuit)).await?;
-    info!("Server response: {}", response);
+    match response {
+        VerificationResponse::Valid { result } => {
+            info!("Proof is valid!");
+            if let Some(result) = result {
+                info!("Result values: {:?}", result);
+            }
+        }
+        VerificationResponse::Invalid { reason } => {
+            info!("Invalid proof: {}", reason);
+        }
+        VerificationResponse::Error { error } => {
+            info!("Error: {}", error);
+        }
+    }
 
     Ok(())
 }
@@ -101,7 +115,24 @@ async fn run_server(address: String) -> Result<(), anyhow::Error> {
         verification_key_path: "vk.bin".to_string(),
     };
 
-    let server = ServerApp::new(config)?;
+    let server = ServerApp::new(config)?
+        .with_valid_proof_handler(|inputs| {
+            let string_inputs: Vec<String> = inputs
+                .iter()
+                .map(|input| utils::field_to_string(*input))
+                .collect();
+            info!("Valid proof received with inputs: {:?}", string_inputs);
+            Ok(())
+        })
+        .with_invalid_proof_handler(|reason| {
+            info!("Invalid proof received: {}", reason);
+            Ok(())
+        })
+        .with_error_handler(|error| {
+            info!("Error occurred: {}", error);
+            Ok(())
+        });
+
     server.run_server().await?;
 
     Ok(())

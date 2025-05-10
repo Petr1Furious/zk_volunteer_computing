@@ -8,7 +8,7 @@ use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::{circuit::ProofRequest, utils::field_from_string};
+use crate::{circuit::ProofRequest, response::VerificationResponse, utils::field_from_string};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ServerConfig {
@@ -16,9 +16,16 @@ pub struct ServerConfig {
     pub verification_key_path: String,
 }
 
+pub type ValidProofHandler = Box<dyn Fn(&[Fr]) -> Result<(), anyhow::Error> + Send + Sync>;
+pub type InvalidProofHandler = Box<dyn Fn(&str) -> Result<(), anyhow::Error> + Send + Sync>;
+pub type ErrorHandler = Box<dyn Fn(&anyhow::Error) -> Result<(), anyhow::Error> + Send + Sync>;
+
 pub struct ServerApp {
     config: ServerConfig,
     verification_key: Arc<VerifyingKey<Bls12_381>>,
+    valid_proof_handler: Option<ValidProofHandler>,
+    invalid_proof_handler: Option<InvalidProofHandler>,
+    error_handler: Option<ErrorHandler>,
 }
 
 impl ServerApp {
@@ -31,7 +38,34 @@ impl ServerApp {
         Ok(Self {
             config,
             verification_key: Arc::new(vk),
+            valid_proof_handler: None,
+            invalid_proof_handler: None,
+            error_handler: None,
         })
+    }
+
+    pub fn with_valid_proof_handler<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(&[Fr]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+    {
+        self.valid_proof_handler = Some(Box::new(handler));
+        self
+    }
+
+    pub fn with_invalid_proof_handler<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(&str) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+    {
+        self.invalid_proof_handler = Some(Box::new(handler));
+        self
+    }
+
+    pub fn with_error_handler<F>(mut self, handler: F) -> Self
+    where
+        F: Fn(&anyhow::Error) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+    {
+        self.error_handler = Some(Box::new(handler));
+        self
     }
 
     fn verify(&self, request: &ProofRequest) -> Result<bool, anyhow::Error> {
@@ -55,18 +89,68 @@ impl ServerApp {
         app: web::Data<Arc<Self>>,
     ) -> HttpResponse {
         debug!("Received verification request");
+        let inputs: Vec<Fr> = match request
+            .public_inputs
+            .iter()
+            .map(|s| field_from_string(s))
+            .collect::<Result<Vec<_>, _>>()
+        {
+            Ok(inputs) => inputs,
+            Err(e) => {
+                error!("Failed to parse inputs: {}", e);
+                if let Some(handler) = &app.error_handler {
+                    if let Err(handler_err) = handler(&e) {
+                        error!("Error handler failed: {}", handler_err);
+                    }
+                }
+                return HttpResponse::InternalServerError().json(VerificationResponse::Error {
+                    error: e.to_string(),
+                });
+            }
+        };
+
         match app.verify(&request) {
             Ok(true) => {
                 info!("Proof verified successfully");
-                HttpResponse::Ok().body("Proof is valid")
+                if let Some(handler) = &app.valid_proof_handler {
+                    if let Err(e) = handler(&inputs) {
+                        error!("Valid proof handler failed: {}", e);
+                        return HttpResponse::InternalServerError().json(
+                            VerificationResponse::Error {
+                                error: e.to_string(),
+                            },
+                        );
+                    }
+                }
+                HttpResponse::Ok().json(VerificationResponse::Valid {
+                    result: Some(request.public_inputs.clone()),
+                })
             }
             Ok(false) => {
                 warn!("Invalid proof received");
-                HttpResponse::BadRequest().body("Invalid proof")
+                let reason = "Proof verification failed".to_string();
+                if let Some(handler) = &app.invalid_proof_handler {
+                    if let Err(e) = handler(&reason) {
+                        error!("Invalid proof handler failed: {}", e);
+                        return HttpResponse::InternalServerError().json(
+                            VerificationResponse::Error {
+                                error: e.to_string(),
+                            },
+                        );
+                    }
+                }
+                HttpResponse::BadRequest().json(VerificationResponse::Invalid { reason })
             }
             Err(e) => {
                 error!("Verification error: {}", e);
-                HttpResponse::InternalServerError().body(format!("Verification error: {}", e))
+                if let Some(handler) = &app.error_handler {
+                    if let Err(handler_err) = handler(&e) {
+                        error!("Error handler failed: {}", handler_err);
+                    }
+                }
+                HttpResponse::InternalServerError().json(VerificationResponse::Error {
+                    error: e.to_string(),
+                })
             }
         }
     }
