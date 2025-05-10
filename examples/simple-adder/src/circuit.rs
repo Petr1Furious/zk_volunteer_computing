@@ -20,6 +20,7 @@ impl ConstraintGenerator<Fr> for AdderCircuit {
 
         let expected_sum = context.new_public_input(|| Ok(self.x + self.y))?;
         sum_var.enforce_equal(&expected_sum)?;
+
         Ok(())
     }
 }
