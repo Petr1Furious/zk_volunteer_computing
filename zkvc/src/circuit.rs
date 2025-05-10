@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Serialize, Deserialize)]
 pub struct ProofRequest {
+    pub client_id: String,
     pub proof: String,
     pub public_inputs: Vec<String>,
 }
@@ -48,7 +49,7 @@ impl<F: PrimeField> ZkCircuitContext<F> {
 
 pub trait ConstraintGenerator<F: PrimeField> {
     fn generate_constraints(&self, context: &mut ZkCircuitContext<F>)
-    -> Result<(), SynthesisError>;
+        -> Result<(), SynthesisError>;
 }
 
 pub struct ZkCircuit<F: PrimeField> {

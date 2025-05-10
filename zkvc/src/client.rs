@@ -18,6 +18,7 @@ pub struct ClientConfig {
     pub server_url: String,
     pub proving_key_path: String,
     pub proof_path: Option<String>,
+    pub client_id: String,
 }
 
 pub struct ClientApp {
@@ -65,6 +66,7 @@ impl ClientApp {
             .collect();
 
         Ok(ProofRequest {
+            client_id: self.config.client_id.clone(),
             proof,
             public_inputs,
         })
@@ -113,5 +115,9 @@ impl ClientApp {
 
     pub fn get_server_url(&self) -> &str {
         &self.config.server_url
+    }
+
+    pub fn get_client_id(&self) -> &str {
+        &self.config.client_id
     }
 }

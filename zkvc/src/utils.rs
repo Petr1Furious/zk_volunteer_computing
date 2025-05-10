@@ -1,20 +1,11 @@
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
 
 pub fn field_to_string<F: PrimeField>(f: F) -> String {
-    let s = f.into_repr().to_string();
-    let trimmed = s.trim_start_matches('0');
-    if trimmed.is_empty() {
-        "0".to_string()
-    } else {
-        trimmed.to_string()
-    }
+    let bytes = f.into_repr().to_bytes_le();
+    hex::encode(bytes)
 }
 
 pub fn field_from_string<F: PrimeField>(s: &str) -> Result<F, anyhow::Error> {
-    let trimmed = s.trim_start_matches('0');
-    if trimmed.is_empty() {
-        Ok(F::zero())
-    } else {
-        F::from_str(trimmed).map_err(|_| anyhow::anyhow!("Failed to parse field element"))
-    }
+    let bytes = hex::decode(s).map_err(|_| anyhow::anyhow!("Failed to decode hex string"))?;
+    F::from_random_bytes(&bytes).ok_or_else(|| anyhow::anyhow!("Failed to parse field element"))
 }

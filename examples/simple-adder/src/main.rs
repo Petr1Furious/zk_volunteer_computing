@@ -39,25 +39,20 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Generate proving and verification keys
     Setup,
-    /// Start verification server
     Server {
-        /// Server address to listen on
         #[arg(short, long, default_value = "127.0.0.1:65432")]
         address: String,
     },
-    /// Generate and send proof
     Client {
-        /// Server address to connect to
         #[arg(short, long, default_value = "http://127.0.0.1:65432")]
         server_url: String,
-        /// First number to add
         #[arg(short, long, default_value = "3")]
         x: u32,
-        /// Second number to add
         #[arg(short, long, default_value = "5")]
         y: u32,
+        #[arg(short, long, default_value = "client-1")]
+        client_id: String,
     },
 }
 
@@ -74,12 +69,18 @@ fn setup() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-async fn run_client(server_url: String, x: u32, y: u32) -> Result<(), anyhow::Error> {
-    info!("Starting client");
+async fn run_client(
+    server_url: String,
+    x: u32,
+    y: u32,
+    client_id: String,
+) -> Result<(), anyhow::Error> {
+    info!("Starting client {}", client_id);
     let config = ClientConfig {
         server_url,
         proving_key_path: "pk.bin".to_string(),
         proof_path: Some("proof.json".to_string()),
+        client_id,
     };
 
     let client = ClientApp::new(config)?;
@@ -116,20 +117,23 @@ async fn run_server(address: String) -> Result<(), anyhow::Error> {
     };
 
     let server = ServerApp::new(config)?
-        .with_valid_proof_handler(|inputs| {
+        .with_valid_proof_handler(|client_id, inputs| {
             let string_inputs: Vec<String> = inputs
                 .iter()
                 .map(|input| utils::field_to_string(*input))
                 .collect();
-            info!("Valid proof received with inputs: {:?}", string_inputs);
+            info!(
+                "Client {} provided valid proof with inputs: {:?}",
+                client_id, string_inputs
+            );
             Ok(())
         })
-        .with_invalid_proof_handler(|reason| {
-            info!("Invalid proof received: {}", reason);
+        .with_invalid_proof_handler(|client_id, reason| {
+            info!("Client {} provided invalid proof: {}", client_id, reason);
             Ok(())
         })
-        .with_error_handler(|error| {
-            info!("Error occurred: {}", error);
+        .with_error_handler(|client_id, error| {
+            info!("Error occurred for client {}: {}", client_id, error);
             Ok(())
         });
 
@@ -162,7 +166,12 @@ async fn main() -> Result<(), anyhow::Error> {
     match cli.command {
         Commands::Setup => setup()?,
         Commands::Server { address } => run_server(address).await?,
-        Commands::Client { server_url, x, y } => run_client(server_url, x, y).await?,
+        Commands::Client {
+            server_url,
+            x,
+            y,
+            client_id,
+        } => run_client(server_url, x, y, client_id).await?,
     }
 
     Ok(())
