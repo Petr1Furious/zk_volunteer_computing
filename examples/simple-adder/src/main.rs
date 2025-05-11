@@ -115,7 +115,7 @@ async fn run_server(address: String) -> Result<(), anyhow::Error> {
             Ok(())
         });
 
-    server.run_server().await?;
+    server.run().await?;
 
     Ok(())
 }

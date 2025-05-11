@@ -162,7 +162,7 @@ impl ServerApp {
         }
     }
 
-    pub async fn run_server(self) -> std::io::Result<()> {
+    pub async fn run(self) -> std::io::Result<()> {
         let address = self.config.listen_address.clone();
         info!("Starting server on {}", address);
 

@@ -1,8 +1,4 @@
 target
-pk.bin
-vk.bin
-proof.json
 .direnv
-fpk.bin
-fvk.bin
-factor_proof.json
+*.bin
+*.json
