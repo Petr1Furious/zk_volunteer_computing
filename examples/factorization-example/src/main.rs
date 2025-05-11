@@ -4,7 +4,6 @@ use log::{info, LevelFilter};
 use num_primes::Generator;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-use tokio::sync::RwLock;
 use zkvc::client::{ClientApp, ClientConfig};
 use zkvc::response::VerificationResponse;
 use zkvc::server::{ServerApp, ServerConfig};
@@ -80,21 +79,24 @@ fn generate_two_primes(bits: usize) -> (u64, u64) {
 }
 
 fn find_factors(n: u64) -> Option<(u64, u64)> {
-    for i in 2..=((n as f64).sqrt() as u64) {
+    let mut i = 2;
+    while i * i <= n {
         if n % i == 0 {
             return Some((i, n / i));
         }
+        i += 1;
     }
     None
 }
 
 #[derive(Clone)]
 struct AppState {
-    product: Arc<RwLock<u64>>,
+    product: Arc<Mutex<u64>>,
+    prime_bits: usize,
 }
 
 async fn get_challenge(data: web::Data<AppState>) -> impl Responder {
-    let product = *data.product.read().await;
+    let product = *data.product.lock().unwrap();
     HttpResponse::Ok().json(ChallengeResponse { product })
 }
 
@@ -191,10 +193,9 @@ async fn run_server(
     );
 
     let app_state = AppState {
-        product: Arc::new(RwLock::new(product_x)),
+        product: Arc::new(Mutex::new(product_x)),
+        prime_bits,
     };
-
-    let shared_product_x = Arc::new(Mutex::new(product_x));
 
     let http_state = app_state.clone();
     let http_server = HttpServer::new(move || {
@@ -213,6 +214,7 @@ async fn run_server(
         verification_key_path: "fvk.bin".to_string(),
     };
 
+    let app_state_for_handler = app_state.clone();
     let server = ServerApp::new(config)?
         .with_valid_proof_handler(move |client_id, public_inputs| {
             let string_inputs: Vec<String> = public_inputs
@@ -226,9 +228,12 @@ async fn run_server(
 
             if let Some(proved_product_str) = string_inputs.get(0) {
                 if let Ok(proved_product_val) = proved_product_str.parse::<u64>() {
-                    let expected_product = *shared_product_x.lock().unwrap();
+                    let expected_product = *app_state_for_handler.product.lock().unwrap();
                     if proved_product_val == expected_product {
-                        info!("Successfully verified: Proved product {} matches server's product {}.", proved_product_val, expected_product);
+                        info!("Successfully verified: Proved product matches server's product {}.", proved_product_val);
+                        let (p1, p2) = generate_two_primes(app_state_for_handler.prime_bits);
+                        let new_product = p1 * p2;
+                        *app_state_for_handler.product.lock().unwrap() = new_product;
                     } else {
                         info!("Verification MISMATCH: Proved product {} DOES NOT match server's product {}.", proved_product_val, expected_product);
                     }
@@ -245,8 +250,7 @@ async fn run_server(
             Ok(())
         })
         .with_error_handler(|client_id, error| {
-            info!("Error occurred for client {}: {}
-Make sure the client is using the correct product to factor.", client_id, error);
+            info!("Error occurred for client {}: {}", client_id, error);
             Ok(())
         });
 
