@@ -61,9 +61,17 @@ fn generate_random_matrix(height: usize, width: usize) -> Vec<Vec<u64>> {
 }
 
 fn init_logging() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
-        .filter_level(LevelFilter::Info)
+    let log_level = std::env::var("RUST_LOG")
+        .unwrap_or_else(|_| "info".to_string())
+        .parse::<LevelFilter>()
+        .unwrap_or(LevelFilter::Info);
+
+    env_logger::Builder::new()
+        .filter_level(log_level)
+        .format_timestamp_millis()
         .init();
+
+    info!("Logging initialized with level: {}", log_level);
 }
 
 #[tokio::main]
