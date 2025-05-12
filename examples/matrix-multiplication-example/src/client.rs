@@ -57,10 +57,7 @@ impl MatrixMultiplicationClient {
 
         let client = ClientApp::new(config)?;
 
-        let circuit = MatrixMultiplicationCircuit::new(
-            self.private_matrix.clone(),
-            vector,
-        );
+        let circuit = MatrixMultiplicationCircuit::new(self.private_matrix.clone(), vector);
 
         info!(
             "Client {} generating proof for matrix multiplication",

@@ -8,6 +8,7 @@ zkvc = { path = "../../zkvc" }
 ark-bls12-381 = "0.3"
 ark-r1cs-std = { version = "0.3", features = ["std"] }
 ark-relations = "0.3"
+ark-crypto-primitives = { version = "0.3.0", features = ["r1cs"] }
 ark-ff = "0.3"
 tokio = { version = "1.44.2", features = ["full"] }
 clap = { version = "4.5.37", features = ["derive"] }
@@ -20,3 +21,5 @@ num-primes = "0.3.0"
 rand = "0.8.5"
 actix-web = "4.3.1"
 reqwest = { version = "0.11", features = ["json"] }
+base64 = "0.22.1"
+arkworks-mimc = "0.3.0"

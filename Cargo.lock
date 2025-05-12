@@ -310,6 +310,8 @@ checksum = "ff773c0ef8c655c98071d3026a63950798a66b2f45baef22d8334c1756f1bd18"
 dependencies = [
  "ark-ec",
  "ark-ff",
+ "ark-nonnative-field",
+ "ark-r1cs-std",
  "ark-relations",
  "ark-serialize",
  "ark-snark",
@@ -318,6 +320,7 @@ dependencies = [
  "derivative",
  "digest 0.9.0",
  "rayon",
+ "tracing",
 ]
 
 [[package]]
@@ -390,6 +393,24 @@ dependencies = [
  "ark-serialize",
  "ark-std",
  "rayon",
+]
+
+[[package]]
+name = "ark-nonnative-field"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "440ad4569974910adbeb84422b7e622b79e08d27142afd113785b7fcfb446186"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-r1cs-std",
+ "ark-relations",
+ "ark-std",
+ "derivative",
+ "num-bigint 0.4.6",
+ "num-integer",
+ "num-traits",
+ "tracing",
 ]
 
 [[package]]
@@ -476,6 +497,19 @@ dependencies = [
  "num-traits",
  "rand 0.8.5",
  "rayon",
+]
+
+[[package]]
+name = "arkworks-mimc"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1754f52e36264567503495be341d76093a0f4201a8887d6c54eb8d6351696583"
+dependencies = [
+ "ark-crypto-primitives",
+ "ark-ff",
+ "ark-r1cs-std",
+ "ark-relations",
+ "ark-std",
 ]
 
 [[package]]
@@ -1528,9 +1562,12 @@ dependencies = [
  "actix-web",
  "anyhow",
  "ark-bls12-381",
+ "ark-crypto-primitives",
  "ark-ff",
  "ark-r1cs-std",
  "ark-relations",
+ "arkworks-mimc",
+ "base64 0.22.1",
  "clap",
  "env_logger",
  "log",

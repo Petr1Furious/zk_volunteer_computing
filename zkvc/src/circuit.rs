@@ -1,7 +1,7 @@
 use ark_ff::PrimeField;
 use ark_r1cs_std::alloc::AllocVar;
 use ark_r1cs_std::fields::fp::FpVar;
-use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
+use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, Namespace, SynthesisError};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
@@ -10,6 +10,16 @@ pub struct ProofRequest {
     pub client_id: String,
     pub proof: String,
     pub public_inputs: Vec<String>,
+}
+
+pub struct WrappedConstraintSystem<F: PrimeField> {
+    cs: ConstraintSystemRef<F>,
+}
+
+impl<F: PrimeField> Into<Namespace<F>> for WrappedConstraintSystem<F> {
+    fn into(self) -> Namespace<F> {
+        self.cs.into()
+    }
 }
 
 #[derive(Clone)]
@@ -44,6 +54,12 @@ impl<F: PrimeField> ZkCircuitContext<F> {
 
     pub fn get_public_inputs(self) -> Vec<F> {
         self.public_inputs
+    }
+
+    pub fn get_wrapped_cs(&self) -> WrappedConstraintSystem<F> {
+        WrappedConstraintSystem {
+            cs: self.cs.clone(),
+        }
     }
 }
 
