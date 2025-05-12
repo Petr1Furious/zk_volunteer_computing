@@ -10,6 +10,7 @@ pub struct MatrixMultiplicationClient {
     challenge_url: String,
     client_id: String,
     private_matrix: Vec<Vec<u64>>,
+    use_hash: bool,
 }
 
 impl MatrixMultiplicationClient {
@@ -18,12 +19,14 @@ impl MatrixMultiplicationClient {
         challenge_url: String,
         client_id: String,
         private_matrix: Vec<Vec<u64>>,
+        use_hash: bool,
     ) -> Self {
         Self {
             server_url,
             challenge_url,
             client_id,
             private_matrix,
+            use_hash,
         }
     }
 
@@ -57,11 +60,12 @@ impl MatrixMultiplicationClient {
 
         let client = ClientApp::new(config)?;
 
-        let circuit = MatrixMultiplicationCircuit::new(self.private_matrix.clone(), vector);
+        let circuit =
+            MatrixMultiplicationCircuit::new(self.private_matrix.clone(), vector, self.use_hash);
 
         info!(
-            "Client {} generating proof for matrix multiplication",
-            self.client_id
+            "Client {} generating proof for matrix multiplication (hashing: {})",
+            self.client_id, self.use_hash
         );
 
         let response = client.generate_and_send_proof(Box::new(circuit)).await?;

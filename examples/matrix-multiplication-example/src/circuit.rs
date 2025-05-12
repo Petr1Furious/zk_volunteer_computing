@@ -20,10 +20,11 @@ pub struct MatrixMultiplicationCircuit {
     public_vector: Vec<u64>,
     result: Vec<u64>,
     matrix_hash: Fr,
+    use_hash: bool,
 }
 
 impl MatrixMultiplicationCircuit {
-    pub fn new(private_matrix: Vec<Vec<u64>>, public_vector: Vec<u64>) -> Self {
+    pub fn new(private_matrix: Vec<Vec<u64>>, public_vector: Vec<u64>, use_hash: bool) -> Self {
         let n = private_matrix.len();
         let m = private_matrix[0].len();
         assert_eq!(
@@ -39,25 +40,30 @@ impl MatrixMultiplicationCircuit {
             }
         }
 
-        let mimc = MiMC::<Fr, MIMC_7_91_BLS12_381_PARAMS>::new(
-            1,
-            Fr::from(0u64),
-            round_keys_contants_to_vec(&MIMC_7_91_BLS12_381_ROUND_KEYS),
-        );
+        let matrix_hash = if use_hash {
+            let mimc = MiMC::<Fr, MIMC_7_91_BLS12_381_PARAMS>::new(
+                1,
+                Fr::from(0u64),
+                round_keys_contants_to_vec(&MIMC_7_91_BLS12_381_ROUND_KEYS),
+            );
 
-        let mut matrix_hash = Fr::from(0u64);
-
-        for row in &private_matrix {
-            for val in row {
-                matrix_hash = mimc.permute_non_feistel(vec![matrix_hash, Fr::from(*val)])[0];
+            let mut hash = Fr::from(0u64);
+            for row in &private_matrix {
+                for val in row {
+                    hash = mimc.permute_non_feistel(vec![hash, Fr::from(*val)])[0];
+                }
             }
-        }
+            hash
+        } else {
+            Fr::from(0u64)
+        };
 
         Self {
             private_matrix,
             public_vector,
             result,
             matrix_hash,
+            use_hash,
         }
     }
 }
@@ -101,31 +107,32 @@ impl ConstraintGenerator<Fr> for MatrixMultiplicationCircuit {
             sum.enforce_equal(&result_vars[i])?;
         }
 
-        let public_zero = context.new_witness(|| Ok(Fr::from(0u64)))?;
-        let public_round_keys = round_keys_contants_to_vec(&MIMC_7_91_BLS12_381_ROUND_KEYS)
-            .iter()
-            .map(|x| context.new_witness(|| Ok(*x)))
-            .collect::<Result<Vec<_>, _>>()?;
+        if self.use_hash {
+            let public_zero = context.new_witness(|| Ok(Fr::from(0u64)))?;
+            let public_round_keys = round_keys_contants_to_vec(&MIMC_7_91_BLS12_381_ROUND_KEYS)
+                .iter()
+                .map(|x| context.new_witness(|| Ok(*x)))
+                .collect::<Result<Vec<_>, _>>()?;
 
-        let mimc_var =
-            MiMCVar::<Fr, MIMC_7_91_BLS12_381_PARAMS>::new(1, public_zero, public_round_keys);
+            let mimc_var =
+                MiMCVar::<Fr, MIMC_7_91_BLS12_381_PARAMS>::new(1, public_zero, public_round_keys);
 
-        let mut computed_hash = FpVar::<Fr>::Constant(Fr::from(0u64));
+            let mut computed_hash = FpVar::<Fr>::Constant(Fr::from(0u64));
 
-        for row in &matrix_vars {
-            for var in row {
-                computed_hash =
-                    MiMCNonFeistelCRHGadget::<Fr, MIMC_7_91_BLS12_381_PARAMS>::evaluate(
-                        &mimc_var,
-                        &computed_hash.to_bytes()?,
-                        &var.to_bytes()?,
-                    )?;
+            for row in &matrix_vars {
+                for var in row {
+                    computed_hash =
+                        MiMCNonFeistelCRHGadget::<Fr, MIMC_7_91_BLS12_381_PARAMS>::evaluate(
+                            &mimc_var,
+                            &computed_hash.to_bytes()?,
+                            &var.to_bytes()?,
+                        )?;
+                }
             }
+
+            let matrix_hash_var = context.new_public_input(|| Ok(self.matrix_hash))?;
+            computed_hash.enforce_equal(&matrix_hash_var)?;
         }
-
-        let matrix_hash_var = context.new_public_input(|| Ok(self.matrix_hash))?;
-
-        computed_hash.enforce_equal(&matrix_hash_var)?;
 
         Ok(())
     }

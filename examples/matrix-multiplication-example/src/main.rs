@@ -17,7 +17,14 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Setup,
+    Setup {
+        #[arg(long, default_value_t = false)]
+        use_hash: bool,
+        #[arg(long, default_value_t = 3)]
+        matrix_height: usize,
+        #[arg(long, default_value_t = 3)]
+        matrix_width: usize,
+    },
     Server {
         #[arg(short, long, default_value = "127.0.0.1:65433")]
         address: String,
@@ -39,13 +46,23 @@ enum Commands {
         matrix_height: usize,
         #[arg(long, default_value_t = 3)]
         matrix_width: usize,
+        #[arg(long, default_value_t = false)]
+        use_hash: bool,
     },
 }
 
-fn setup_keys() -> Result<(), anyhow::Error> {
+fn setup_keys(
+    use_hash: bool,
+    matrix_height: usize,
+    matrix_width: usize,
+) -> Result<(), anyhow::Error> {
     info!("Starting setup phase for MatrixMultiplicationCircuit");
 
-    let circuit = circuit::MatrixMultiplicationCircuit::new(vec![vec![0; 3]; 3], vec![0; 3]);
+    let circuit = circuit::MatrixMultiplicationCircuit::new(
+        vec![vec![0; matrix_width]; matrix_height],
+        vec![0; matrix_width],
+        use_hash,
+    );
 
     setup::generate_keys_to_files(Box::new(circuit), "mpk.bin", "mvk.bin")?;
 
@@ -81,9 +98,11 @@ async fn main() -> Result<(), anyhow::Error> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Setup => {
-            setup_keys()?;
-        }
+        Commands::Setup {
+            use_hash,
+            matrix_height,
+            matrix_width,
+        } => setup_keys(use_hash, matrix_height, matrix_width)?,
         Commands::Server {
             address,
             challenge_address,
@@ -103,15 +122,15 @@ async fn main() -> Result<(), anyhow::Error> {
             client_id,
             matrix_height,
             matrix_width,
+            use_hash,
         } => {
             let private_matrix = generate_random_matrix(matrix_height, matrix_width);
-            info!("Generated private matrix: {:?}", private_matrix);
-
             let client = client::MatrixMultiplicationClient::new(
                 server_url,
                 challenge_url,
                 client_id,
                 private_matrix,
+                use_hash,
             );
             client.run().await?;
         }
