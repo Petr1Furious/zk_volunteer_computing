@@ -1,5 +1,5 @@
 use crate::{
-    circuit::{ConstraintGenerator, ProofRequest, ZkCircuit},
+    circuit::{Base64Proof, ConstraintGenerator, ProofRequest, ZkCircuit},
     response::VerificationResponse,
     utils::field_to_string,
 };
@@ -56,7 +56,7 @@ impl ClientApp {
 
         let mut proof_bytes = vec![];
         proof.serialize_uncompressed(&mut proof_bytes)?;
-        let proof = STANDARD.encode(&proof_bytes);
+        let base64_proof = Base64Proof(STANDARD.encode(&proof_bytes));
         debug!("Proof serialized and encoded");
 
         let public_inputs = public_inputs.lock().unwrap();
@@ -67,7 +67,7 @@ impl ClientApp {
 
         Ok(ProofRequest {
             client_id: self.config.client_id.clone(),
-            proof,
+            proof: base64_proof,
             public_inputs,
         })
     }

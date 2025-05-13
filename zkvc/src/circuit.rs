@@ -6,10 +6,13 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
 #[derive(Serialize, Deserialize)]
+pub(crate) struct Base64Proof(pub(crate) String);
+
+#[derive(Serialize, Deserialize)]
 pub struct ProofRequest {
-    pub client_id: String,
-    pub proof: String,
-    pub public_inputs: Vec<String>,
+    pub(crate) client_id: String,
+    pub(crate) proof: Base64Proof,
+    pub(crate) public_inputs: Vec<String>,
 }
 
 pub struct WrappedConstraintSystem<F: PrimeField> {
@@ -52,7 +55,7 @@ impl<F: PrimeField> ZkCircuitContext<F> {
         FpVar::new_witness(self.cs.clone(), f)
     }
 
-    pub fn get_public_inputs(self) -> Vec<F> {
+    fn get_public_inputs(self) -> Vec<F> {
         self.public_inputs
     }
 

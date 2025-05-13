@@ -71,7 +71,7 @@ impl ServerApp {
 
     fn verify(&self, request: &ProofRequest) -> Result<bool, anyhow::Error> {
         debug!("Verifying proof");
-        let proof_bytes = STANDARD.decode(&request.proof)?;
+        let proof_bytes = STANDARD.decode(&request.proof.0)?;
         let proof: Proof<Bls12_381> = Proof::deserialize_uncompressed(&*proof_bytes)?;
         let inputs: Vec<Fr> = request
             .public_inputs
