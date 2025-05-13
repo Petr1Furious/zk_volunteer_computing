@@ -2,6 +2,9 @@
 name = "zkvc"
 version = "0.1.0"
 edition = "2021"
+description = "A Rust crate for building zero-knowledge proof-based volunteer computing systems"
+repository = "https://github.com/Petr1Furious/zkvc"
+license = "MIT"
 
 [dependencies]
 ark-relations = "0.3"
