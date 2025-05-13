@@ -24,3 +24,4 @@ ark-ec = "0.3.0"
 log = "0.4.27"
 hex = "0.4.3"
 num-bigint = "0.4.6"
+url = { version = "2.5.4", features = ["serde"] }

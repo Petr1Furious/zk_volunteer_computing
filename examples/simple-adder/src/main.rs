@@ -1,6 +1,9 @@
+use std::path::PathBuf;
+
 use ark_bls12_381::Fr;
 use clap::{Parser, Subcommand};
 use log::{info, LevelFilter};
+use url::Url;
 use zkvc::client::{ClientApp, ClientConfig};
 use zkvc::response::VerificationResponse;
 use zkvc::server::{ServerApp, ServerConfig};
@@ -41,7 +44,11 @@ fn setup() -> Result<(), anyhow::Error> {
         y: Fr::from(0u32),
     };
 
-    setup::generate_keys_to_files(Box::new(circuit), "pk.bin", "vk.bin")?;
+    setup::generate_keys_to_files(
+        Box::new(circuit),
+        &PathBuf::from("pk.bin"),
+        &PathBuf::from("vk.bin"),
+    )?;
 
     info!("Setup complete: pk.bin and vk.bin created.");
     Ok(())
@@ -55,9 +62,9 @@ async fn run_client(
 ) -> Result<(), anyhow::Error> {
     info!("Starting client {}", client_id);
     let config = ClientConfig {
-        server_url,
-        proving_key_path: "pk.bin".to_string(),
-        proof_path: Some("proof.json".to_string()),
+        server_url: Url::parse(&server_url)?,
+        proving_key_path: PathBuf::from("pk.bin"),
+        proof_path: Some(PathBuf::from("proof.json")),
         client_id,
     };
 
@@ -91,7 +98,7 @@ async fn run_server(address: String) -> Result<(), anyhow::Error> {
     info!("Starting server on {}", address);
     let config = ServerConfig {
         listen_address: address,
-        verification_key_path: "vk.bin".to_string(),
+        verification_key_path: PathBuf::from("vk.bin"),
     };
 
     let server = ServerApp::new(config)?

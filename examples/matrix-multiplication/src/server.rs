@@ -2,6 +2,7 @@ use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 use anyhow::Result;
 use log::info;
 use rand::Rng;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use zkvc::server::{ServerApp, ServerConfig};
 use zkvc::utils;
@@ -57,7 +58,7 @@ impl MatrixMultiplicationServer {
 
         let config = ServerConfig {
             listen_address: self.address.clone(),
-            verification_key_path: "mpk.bin".to_string(),
+            verification_key_path: PathBuf::from("mpk.bin"),
         };
 
         let app_state_for_handler = app_state.clone();
@@ -95,6 +96,10 @@ impl MatrixMultiplicationServer {
             })
             .with_invalid_proof_handler(|client_id, reason| {
                 info!("Client {} provided invalid proof: {}", client_id, reason);
+                Ok(())
+            })
+            .with_error_handler(|client_id, error| {
+                info!("Error occurred for client {}: {}", client_id, error);
                 Ok(())
             });
 

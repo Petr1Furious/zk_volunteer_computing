@@ -1,5 +1,8 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use log::info;
+use url::Url;
 use zkvc::client::{ClientApp, ClientConfig};
 use zkvc::response::VerificationResponse;
 
@@ -52,9 +55,9 @@ impl MatrixMultiplicationClient {
         }
 
         let config = ClientConfig {
-            server_url: self.server_url.clone(),
-            proving_key_path: "mpk.bin".to_string(),
-            proof_path: Some("matrix_proof.json".to_string()),
+            server_url: Url::parse(&self.server_url)?,
+            proving_key_path: PathBuf::from("mpk.bin"),
+            proof_path: Some(PathBuf::from("matrix_proof.json")),
             client_id: self.client_id.clone(),
         };
 

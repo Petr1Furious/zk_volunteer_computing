@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 use log::{info, LevelFilter};
 use rand::Rng;
@@ -64,7 +66,11 @@ fn setup_keys(
         use_hash,
     );
 
-    setup::generate_keys_to_files(Box::new(circuit), "mpk.bin", "mvk.bin")?;
+    setup::generate_keys_to_files(
+        Box::new(circuit),
+        &PathBuf::from("mpk.bin"),
+        &PathBuf::from("mvk.bin"),
+    )?;
 
     info!("Setup complete: mpk.bin and mvk.bin created.");
     Ok(())

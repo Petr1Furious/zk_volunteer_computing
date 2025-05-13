@@ -1,7 +1,7 @@
 use crate::{
     circuit::{Base64Proof, ConstraintGenerator, ProofRequest, ZkCircuit},
     response::VerificationResponse,
-    utils::field_to_string,
+    utils::{field_to_string, VERIFY_PATH},
 };
 use ark_bls12_381::{Bls12_381, Fr};
 use ark_groth16::{create_random_proof, ProvingKey};
@@ -11,13 +11,17 @@ use log::{debug, info};
 use rand::thread_rng;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, Mutex};
+use std::{
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
+use url::Url;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClientConfig {
-    pub server_url: String,
-    pub proving_key_path: String,
-    pub proof_path: Option<String>,
+    pub server_url: Url,
+    pub proving_key_path: PathBuf,
+    pub proof_path: Option<PathBuf>,
     pub client_id: String,
 }
 
@@ -44,7 +48,7 @@ impl ClientApp {
         generator: Box<dyn ConstraintGenerator<Fr>>,
     ) -> Result<ProofRequest, anyhow::Error> {
         debug!("Generating proof request");
-        let public_inputs: Arc<Mutex<Vec<Fr>>> = Arc::new(Mutex::new(vec![]));
+        let public_inputs: Arc<Mutex<Vec<Fr>>> = Arc::new(Mutex::new(Vec::new()));
         let circuit = ZkCircuit {
             generator,
             public_inputs: Arc::clone(&public_inputs),
@@ -74,7 +78,7 @@ impl ClientApp {
 
     fn save_proof(&self, request: &ProofRequest) -> Result<(), anyhow::Error> {
         if let Some(path) = &self.config.proof_path {
-            debug!("Saving proof request to {}", path);
+            debug!("Saving proof request to {}", path.display());
             let json = serde_json::to_string(request)?;
             std::fs::write(path, json)?;
             info!("Proof request saved successfully");
@@ -89,7 +93,7 @@ impl ClientApp {
         debug!("Sending proof to server at {}", self.config.server_url);
         let client = Client::new();
         let resp = client
-            .post(format!("{}/verify", self.config.server_url))
+            .post(self.config.server_url.join(VERIFY_PATH)?)
             .json(&request)
             .send()
             .await?;
@@ -109,11 +113,11 @@ impl ClientApp {
         self.send_proof(proof_request).await
     }
 
-    pub fn get_proof_path(&self) -> Option<&str> {
-        self.config.proof_path.as_deref()
+    pub fn get_proof_path(&self) -> Option<&PathBuf> {
+        self.config.proof_path.as_ref()
     }
 
-    pub fn get_server_url(&self) -> &str {
+    pub fn get_server_url(&self) -> &Url {
         &self.config.server_url
     }
 

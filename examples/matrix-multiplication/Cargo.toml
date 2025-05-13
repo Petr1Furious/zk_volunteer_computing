@@ -23,3 +23,4 @@ actix-web = "4.3.1"
 reqwest = { version = "0.11", features = ["json"] }
 base64 = "0.22.1"
 arkworks-mimc = { version = "0.3.0", features = ["r1cs", "mimc-7-91-bls12-381"] }
+url = { version = "2.5.4", features = ["serde"] }

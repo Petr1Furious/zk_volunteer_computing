@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 use log::{info, LevelFilter};
 use zkvc::setup;
@@ -49,7 +51,11 @@ fn setup_keys() -> Result<(), anyhow::Error> {
         product: 0,
     };
 
-    setup::generate_keys_to_files(Box::new(circuit), "fpk.bin", "fvk.bin")?;
+    setup::generate_keys_to_files(
+        Box::new(circuit),
+        &PathBuf::from("fpk.bin"),
+        &PathBuf::from("fvk.bin"),
+    )?;
 
     info!("Setup complete: fpk.bin and fvk.bin created.");
     Ok(())

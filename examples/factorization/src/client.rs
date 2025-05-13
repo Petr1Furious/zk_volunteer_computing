@@ -1,5 +1,8 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
 use log::info;
+use reqwest::Url;
 use zkvc::client::{ClientApp, ClientConfig};
 use zkvc::response::VerificationResponse;
 
@@ -51,9 +54,9 @@ impl FactorizationClient {
         };
 
         let config = ClientConfig {
-            server_url: self.server_url.clone(),
-            proving_key_path: "fpk.bin".to_string(),
-            proof_path: Some("factor_proof.json".to_string()),
+            server_url: Url::parse(&self.server_url)?,
+            proving_key_path: PathBuf::from("fpk.bin"),
+            proof_path: Some(PathBuf::from("factor_proof.json")),
             client_id: self.client_id.clone(),
         };
 

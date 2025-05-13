@@ -4,7 +4,10 @@ use ark_groth16::{Groth16, ProvingKey, VerifyingKey};
 use ark_serialize::CanonicalSerialize as _;
 use ark_snark::CircuitSpecificSetupSNARK as _;
 use rand::thread_rng;
-use std::sync::{Arc, Mutex};
+use std::{
+    path::Path,
+    sync::{Arc, Mutex},
+};
 
 pub fn generate_keys(
     generator: Box<dyn ConstraintGenerator<Fr>>,
@@ -22,8 +25,8 @@ pub fn generate_keys(
 
 pub fn generate_keys_to_files(
     generator: Box<dyn ConstraintGenerator<Fr>>,
-    pk_path: &str,
-    vk_path: &str,
+    pk_path: &Path,
+    vk_path: &Path,
 ) -> Result<(), anyhow::Error> {
     let (pk, vk) = generate_keys(generator)?;
 

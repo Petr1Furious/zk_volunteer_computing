@@ -6,30 +6,39 @@ use ark_snark::SNARK;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
-use crate::{circuit::ProofRequest, response::VerificationResponse, utils::field_from_string};
+use crate::{
+    circuit::ProofRequest,
+    response::VerificationResponse,
+    utils::{field_from_string, VERIFY_PATH},
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ServerConfig {
     pub listen_address: String,
-    pub verification_key_path: String,
+    pub verification_key_path: PathBuf,
 }
 
-pub type ValidProofHandler = Box<dyn Fn(&str, &[Fr]) -> Result<(), anyhow::Error> + Send + Sync>;
-pub type InvalidProofHandler = Box<dyn Fn(&str, &str) -> Result<(), anyhow::Error> + Send + Sync>;
-pub type ErrorHandler =
-    Box<dyn Fn(&str, &anyhow::Error) -> Result<(), anyhow::Error> + Send + Sync>;
-
-pub struct ServerApp {
+pub struct ServerApp<VP, IP, EP>
+where
+    VP: Fn(&str, &[Fr]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+    IP: Fn(&str, &str) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+    EP: Fn(&str, &anyhow::Error) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+{
     config: ServerConfig,
     verification_key: Arc<VerifyingKey<Bls12_381>>,
-    valid_proof_handler: Option<ValidProofHandler>,
-    invalid_proof_handler: Option<InvalidProofHandler>,
-    error_handler: Option<ErrorHandler>,
+    valid_proof_handler: Option<VP>,
+    invalid_proof_handler: Option<IP>,
+    error_handler: Option<EP>,
 }
 
-impl ServerApp {
+impl<VP, IP, EP> ServerApp<VP, IP, EP>
+where
+    VP: Fn(&str, &[Fr]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+    IP: Fn(&str, &str) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+    EP: Fn(&str, &anyhow::Error) -> Result<(), anyhow::Error> + Send + Sync + 'static,
+{
     pub fn new(config: ServerConfig) -> Result<Self, anyhow::Error> {
         debug!("Creating new ServerApp instance");
         let vk_bytes = std::fs::read(&config.verification_key_path)?;
@@ -45,27 +54,18 @@ impl ServerApp {
         })
     }
 
-    pub fn with_valid_proof_handler<F>(mut self, handler: F) -> Self
-    where
-        F: Fn(&str, &[Fr]) -> Result<(), anyhow::Error> + Send + Sync + 'static,
-    {
-        self.valid_proof_handler = Some(Box::new(handler));
+    pub fn with_valid_proof_handler(mut self, handler: VP) -> Self {
+        self.valid_proof_handler = Some(handler);
         self
     }
 
-    pub fn with_invalid_proof_handler<F>(mut self, handler: F) -> Self
-    where
-        F: Fn(&str, &str) -> Result<(), anyhow::Error> + Send + Sync + 'static,
-    {
-        self.invalid_proof_handler = Some(Box::new(handler));
+    pub fn with_invalid_proof_handler(mut self, handler: IP) -> Self {
+        self.invalid_proof_handler = Some(handler);
         self
     }
 
-    pub fn with_error_handler<F>(mut self, handler: F) -> Self
-    where
-        F: Fn(&str, &anyhow::Error) -> Result<(), anyhow::Error> + Send + Sync + 'static,
-    {
-        self.error_handler = Some(Box::new(handler));
+    pub fn with_error_handler(mut self, handler: EP) -> Self {
+        self.error_handler = Some(handler);
         self
     }
 
@@ -171,7 +171,7 @@ impl ServerApp {
             let app = web::Data::new(Arc::clone(&app));
             App::new()
                 .app_data(app)
-                .route("/verify", web::post().to(Self::verify_handler))
+                .route(VERIFY_PATH, web::post().to(Self::verify_handler))
         })
         .bind(address)?
         .run()
