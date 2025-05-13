@@ -3,7 +3,7 @@ use ark_crypto_primitives::crh::constraints::TwoToOneCRHGadget;
 use ark_r1cs_std::eq::EqGadget;
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_r1cs_std::ToBytesGadget as _;
-use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
+use ark_relations::r1cs::SynthesisError;
 use arkworks_mimc::{
     constraints::{MiMCNonFeistelCRHGadget, MiMCVar},
     params::{
@@ -135,12 +135,5 @@ impl ConstraintGenerator<Fr> for MatrixMultiplicationCircuit {
         }
 
         Ok(())
-    }
-}
-
-impl ConstraintSynthesizer<Fr> for MatrixMultiplicationCircuit {
-    fn generate_constraints(self, cs: ConstraintSystemRef<Fr>) -> Result<(), SynthesisError> {
-        let mut zk_context = ZkCircuitContext::new(cs);
-        ConstraintGenerator::generate_constraints(&self, &mut zk_context)
     }
 }

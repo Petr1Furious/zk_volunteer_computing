@@ -1,6 +1,6 @@
 use ark_bls12_381::Fr;
-use ark_r1cs_std::eq::EqGadget;
-use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
+use ark_r1cs_std::eq::EqGadget as _;
+use ark_relations::r1cs::SynthesisError;
 use zkvc::circuit::{ConstraintGenerator, ZkCircuitContext};
 
 #[derive(Clone, Debug)]
@@ -25,12 +25,5 @@ impl ConstraintGenerator<Fr> for FactorizationCircuit {
         calculated_product.enforce_equal(&expected_product)?;
 
         Ok(())
-    }
-}
-
-impl ConstraintSynthesizer<Fr> for FactorizationCircuit {
-    fn generate_constraints(self, cs: ConstraintSystemRef<Fr>) -> Result<(), SynthesisError> {
-        let mut zk_context = ZkCircuitContext::new(cs);
-        ConstraintGenerator::generate_constraints(&self, &mut zk_context)
     }
 }
