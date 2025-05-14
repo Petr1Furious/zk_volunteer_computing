@@ -41,9 +41,13 @@ where
 {
     pub fn new(config: ServerConfig) -> Result<Self, anyhow::Error> {
         debug!("Creating new ServerApp instance");
+        let start = Instant::now();
         let vk_bytes = std::fs::read(&config.verification_key_path)?;
-        let vk = VerifyingKey::deserialize_uncompressed(&*vk_bytes)?;
-        info!("Verification key loaded successfully");
+        let vk = VerifyingKey::deserialize_unchecked(&*vk_bytes)?;
+        info!(
+            "Verification key loaded successfully in {:?}",
+            start.elapsed()
+        );
 
         Ok(Self {
             config,

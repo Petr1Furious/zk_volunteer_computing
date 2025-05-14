@@ -36,10 +36,10 @@ pub fn generate_keys_to_files(
     let (pk, vk) = generate_keys(generator)?;
 
     let mut pk_file = std::fs::File::create(pk_path)?;
-    pk.serialize_uncompressed(&mut pk_file)?;
+    pk.serialize_unchecked(&mut pk_file)?;
 
     let mut vk_file = std::fs::File::create(vk_path)?;
-    vk.serialize_uncompressed(&mut vk_file)?;
+    vk.serialize_unchecked(&mut vk_file)?;
 
     debug!(
         "Key generation and saving to files completed in {:?}",

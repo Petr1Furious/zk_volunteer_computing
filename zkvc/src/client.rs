@@ -34,9 +34,10 @@ pub struct ClientApp {
 impl ClientApp {
     pub fn new(config: ClientConfig) -> Result<Self, anyhow::Error> {
         debug!("Creating new ClientApp instance");
+        let start = Instant::now();
         let pk_bytes = std::fs::read(&config.proving_key_path)?;
-        let pk = ProvingKey::deserialize_uncompressed(&*pk_bytes)?;
-        info!("Proving key loaded successfully");
+        let pk = ProvingKey::deserialize_unchecked(&*pk_bytes)?;
+        info!("Proving key loaded successfully in {:?}", start.elapsed());
 
         Ok(Self {
             config,
