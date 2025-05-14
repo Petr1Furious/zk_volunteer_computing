@@ -6,7 +6,7 @@ use ark_snark::SNARK;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::Instant};
 
 use crate::{
     circuit::ProofRequest,
@@ -71,6 +71,8 @@ where
 
     fn verify(&self, request: &ProofRequest) -> Result<bool, anyhow::Error> {
         debug!("Verifying proof");
+        let start = Instant::now();
+
         let proof_bytes = STANDARD.decode(&request.proof.0)?;
         let proof: Proof<Bls12_381> = Proof::deserialize_uncompressed(&*proof_bytes)?;
         let inputs: Vec<Fr> = request
@@ -81,6 +83,7 @@ where
         debug!("Inputs: {:?}", inputs);
 
         let result = Groth16::<Bls12_381>::verify(&self.verification_key, &inputs, &proof)?;
+        debug!("Proof verification completed in {:?}", start.elapsed());
         info!("Proof verification result: {}", result);
         Ok(result)
     }
@@ -89,10 +92,12 @@ where
         request: web::Json<ProofRequest>,
         app: web::Data<Arc<Self>>,
     ) -> HttpResponse {
+        let start = Instant::now();
         debug!(
             "Received verification request from client {}",
             request.client_id
         );
+
         let inputs: Vec<Fr> = match request
             .public_inputs
             .iter()
@@ -113,7 +118,7 @@ where
             }
         };
 
-        match app.verify(&request) {
+        let response = match app.verify(&request) {
             Ok(true) => {
                 info!(
                     "Proof verified successfully for client {}",
@@ -159,7 +164,10 @@ where
                     error: e.to_string(),
                 })
             }
-        }
+        };
+
+        debug!("Total request handling time: {:?}", start.elapsed());
+        response
     }
 
     pub async fn run(self) -> std::io::Result<()> {

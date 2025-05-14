@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 use url::Url;
 
@@ -48,6 +49,8 @@ impl ClientApp {
         generator: Box<dyn ConstraintGenerator<Fr>>,
     ) -> Result<ProofRequest, anyhow::Error> {
         debug!("Generating proof request");
+        let start = Instant::now();
+
         let public_inputs: Arc<Mutex<Vec<Fr>>> = Arc::new(Mutex::new(Vec::new()));
         let circuit = ZkCircuit {
             generator,
@@ -56,12 +59,16 @@ impl ClientApp {
 
         let mut rng = thread_rng();
         let proof = create_random_proof::<Bls12_381, _, _>(circuit, &self.proving_key, &mut rng)?;
-        debug!("Proof generated successfully");
+        debug!("Proof generated successfully in {:?}", start.elapsed());
 
+        let start_serialize = Instant::now();
         let mut proof_bytes = vec![];
         proof.serialize_uncompressed(&mut proof_bytes)?;
         let base64_proof = Base64Proof(STANDARD.encode(&proof_bytes));
-        debug!("Proof serialized and encoded");
+        debug!(
+            "Proof serialized and encoded in {:?}",
+            start_serialize.elapsed()
+        );
 
         let public_inputs = public_inputs.lock().unwrap();
         let public_inputs: Vec<String> = public_inputs
@@ -91,6 +98,8 @@ impl ClientApp {
         request: ProofRequest,
     ) -> Result<VerificationResponse, anyhow::Error> {
         debug!("Sending proof to server at {}", self.config.server_url);
+        let start = Instant::now();
+
         let client = Client::new();
         let resp = client
             .post(self.config.server_url.join(VERIFY_PATH)?)
@@ -99,7 +108,7 @@ impl ClientApp {
             .await?;
 
         let response = resp.json::<VerificationResponse>().await?;
-        info!("Received response from server");
+        debug!("Received response from server in {:?}", start.elapsed());
         Ok(response)
     }
 
