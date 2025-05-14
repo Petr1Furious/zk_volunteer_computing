@@ -2,6 +2,7 @@ use ark_ff::PrimeField;
 use ark_r1cs_std::alloc::AllocVar;
 use ark_r1cs_std::fields::fp::FpVar;
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, Namespace, SynthesisError};
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
@@ -78,8 +79,12 @@ pub struct ZkCircuit<F: PrimeField> {
 
 impl<F: PrimeField> ConstraintSynthesizer<F> for ZkCircuit<F> {
     fn generate_constraints(self, cs: ConstraintSystemRef<F>) -> Result<(), SynthesisError> {
-        let mut ctx = ZkCircuitContext::new(cs);
+        let mut ctx = ZkCircuitContext::new(cs.clone());
         self.generator.generate_constraints(&mut ctx)?;
+
+        info!("Number of public inputs: {}", cs.num_instance_variables());
+        info!("Number of witnesses: {}", cs.num_witness_variables());
+        info!("Number of constraints: {}", cs.num_constraints());
 
         *self.public_inputs.lock().unwrap() = ctx.get_public_inputs();
         Ok(())
